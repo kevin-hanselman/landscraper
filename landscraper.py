@@ -28,7 +28,7 @@ ver = '0.1'
 def main():
 	parser = init_argparser()
 	args = parser.parse_args()
-	print(args)
+	#print(args)
 
 	if args.dir:
 		if os.path.isfile(args.dir):
@@ -38,8 +38,8 @@ def main():
 				os.makedirs(args.dir)
 			except Exception as ex:
 				sys.exit(str(ex));
-		os.chdir(args.dir)	
-		
+		os.chdir(args.dir)
+
 	base = 'http://www.reddit.com/r/EarthPorn'
 	url = os.path.join(base, args.filter + '.json')
 	querystr = {}
@@ -51,16 +51,16 @@ def main():
 	if querystr:
 		url += '?' + parse.urlencode(querystr)
 	print('HTTP GET: %r' % url)
-	
+
 	urlo = RedditOpener()
 	jdict = urlo.get_json(url)
 	#print(json.dumps(jdict, sort_keys=True, indent=2, separators=(',', ': ')))
-	
+
 	try:
 		data = [d['data'] for d in jdict['data']['children']]
 	except Exception as ex:
 		sys.exit(str(ex))
-		
+
 	regex = r'(\d+)\s*x\s*(\d+)'
 	for entry in data:
 		title = entry['title']
@@ -75,7 +75,7 @@ def main():
 		else:
 			print('No matching resolution. Skipping.')
 			continue
-		
+
 		if not (res[0] >= args.width and abs(ratio - args.ratio) < args.tol):
 			print('Does not meet image specs. Skipping.')
 			continue
@@ -95,13 +95,13 @@ def init_argparser():
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument('-V','--version', action='version', version='%(prog)s ' + ver)
 	parser.add_argument('-d', '--dir', default='images', help='output directory for images')
-	parser.add_argument('-a', type=float, default=1.6, metavar='RATIO', dest='ratio', help='aspect ratio as decimal (e.g. 1.6)')
-	parser.add_argument('-T', '--tol', type=float, default=0.3, help='aspect ratio absolute tolerance (e.g. 0.2)')
+	parser.add_argument('-a', type=float, default=1.6, metavar='RATIO', dest='ratio', help='aspect ratio as decimal (default: 1.6)')
+	parser.add_argument('-T', '--tol', type=float, default=0.3, help='aspect ratio absolute tolerance (default: 0.3)')
 	parser.add_argument('-w', type=int, default=0, metavar='WIDTH', dest='width', help='minimum resolution width as integer (e.g. 1024)')
-	parser.add_argument('-f', dest='filter', choices=('top','hot','new','random'), default='hot', help='filter results from Reddit')
-	parser.add_argument('-D', '--no-download', action='store_false', dest='download', help='don\'t actually download any files')
+	parser.add_argument('-f', dest='filter', choices=('top','hot','new'), default='hot', help='filter results from Reddit')
 	parser.add_argument('-t', dest='time', choices=('hour', 'day', 'week', 'month', 'year', 'all'), help='filter results by time, only applies to \'top\'')
 	parser.add_argument('-c', '--count', type=int, metavar='NUM', help='the maximum number of results to gather')
+	parser.add_argument('-D', '--no-download', action='store_false', dest='download', help='don\'t actually download any files')
 	return parser
 
 class HTTPError(Exception):
@@ -109,13 +109,13 @@ class HTTPError(Exception):
 
 class RedditOpener(request.FancyURLopener):
 	version = 'User-Agent: landscraper/' + ver
-	
+
 	def http_error_default(self, url, fp, errorcode, errmsg, headers):
 		if errorcode >= 400:
 			raise HTTPError(str(errorcode) + ': ' + errmsg)
 		else:
 			request.FancyURLopener.http_error_default(self, url, fp, errorcode, errmsg, headers)
-			
+
 	def get_json(self, url):
 		resp = self.open(url)
 		encoding = resp.headers.get_content_charset()
@@ -129,7 +129,7 @@ class DownloadManager:
 			self.filename = filename
 		else:
 			self.filename = os.path.basename(url)
-		
+
 	def download(self):
 		if os.path.exists(self.filename):
 			print('File %r exists locally.' % self.filename)
@@ -145,7 +145,7 @@ class DownloadManager:
 			request.urlcleanup()
 			sys.exit(ex)
 		request.urlcleanup()
-	
+
 	def rhook(self, blocks_read, block_size, total_size):
 		amount_read = blocks_read * block_size
 		if total_size > 0:
@@ -153,8 +153,8 @@ class DownloadManager:
 							% (amount_read/total_size*100, sizeof_fmt(total_size)))
 		else: # unknown size
 			sys.stdout.write('\r[Downloading: %s]' % (sizeof_fmt(amount_read)))
-		sys.stdout.flush()       
-	
+		sys.stdout.flush()
+
 def sizeof_fmt(num):
 	for x in [' bytes','KB','MB','GB']:
 		if num < 1024.0:
