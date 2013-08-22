@@ -21,15 +21,14 @@ import re
 import sys
 import json
 import argparse
-from urllib import request 
-import urllib.parse
+from urllib import request, parse
 
-ver = '1.0'
+ver = '0.1'
 
 def main():
 	parser = init_argparser()
 	args = parser.parse_args()
-	#print(args)
+	print(args)
 
 	if args.dir:
 		if os.path.isfile(args.dir):
@@ -42,10 +41,15 @@ def main():
 		os.chdir(args.dir)	
 		
 	base = 'http://www.reddit.com/r/EarthPorn'
-	querystr = ''
-	if args.params:
-		querystr = '?' + '&'.join(args.params)
-	url = os.path.join(base, args.listing + '.json') + querystr
+	url = os.path.join(base, args.filter + '.json')
+	querystr = {}
+	if args.time:
+		querystr['sort'] = args.filter
+		querystr['t'] = args.time
+	if args.count:
+		querystr['limit']=args.count
+	if querystr:
+		url += '?' + parse.urlencode(querystr)
 	print('HTTP GET: %r' % url)
 	
 	urlo = RedditOpener()
@@ -80,10 +84,25 @@ def main():
 			if not ext:
 				print('URL %r is not a file. Skipping.' % url)
 				continue
-			friendly_title = re.sub(r'\W+', '_', title)[:50] + ext
-			dlm = DownloadManager(url, urlo, friendly_title)
-			dlm.download()
-		print('-'*80)
+			print('Download = %s' % args.download)
+			if args.download:
+				friendly_title = re.sub(r'\W+', '_', title)[:50] + ext
+				dlm = DownloadManager(url, urlo, friendly_title)
+				dlm.download()
+	print('-'*80)
+
+def init_argparser():
+	parser = argparse.ArgumentParser(description=__doc__)
+	parser.add_argument('-V','--version', action='version', version='%(prog)s ' + ver)
+	parser.add_argument('-d', '--dir', default='images', help='output directory for images')
+	parser.add_argument('-a', type=float, default=1.6, metavar='RATIO', dest='ratio', help='aspect ratio as decimal (e.g. 1.6)')
+	parser.add_argument('-T', '--tol', type=float, default=0.3, help='aspect ratio absolute tolerance (e.g. 0.2)')
+	parser.add_argument('-w', type=int, default=0, metavar='WIDTH', dest='width', help='minimum resolution width as integer (e.g. 1024)')
+	parser.add_argument('-f', dest='filter', choices=('top','hot','new','random'), default='hot', help='filter results from Reddit')
+	parser.add_argument('-D', '--no-download', action='store_false', dest='download', help='don\'t actually download any files')
+	parser.add_argument('-t', dest='time', choices=('hour', 'day', 'week', 'month', 'year', 'all'), help='filter results by time, only applies to \'top\'')
+	parser.add_argument('-c', '--count', type=int, metavar='NUM', help='the maximum number of results to gather')
+	return parser
 
 class HTTPError(Exception):
 	pass
@@ -141,17 +160,6 @@ def sizeof_fmt(num):
 		if num < 1024.0:
 			return "%4.2f%s" % (num, x)
 		num /= 1024.0
-		
-def init_argparser():
-	parser = argparse.ArgumentParser(description=__doc__)
-	parser.add_argument('-v','--version', action='version', version='%(prog)s ' + ver)
-	parser.add_argument('-d', '--dir', default='images', help='output directory for images')
-	parser.add_argument('-a', type=float, default=1.6, metavar='RATIO', dest='ratio', help='aspect ratio as decimal (e.g. 1.6)')
-	parser.add_argument('-t', '--tol', type=float, default=0.2, help='aspect ratio absolute tolerance (e.g. 0.2)')
-	parser.add_argument('-w', type=int, default=0, metavar='WIDTH', dest='width', help='minimum resolution width as integer (e.g. 1024)')
-	parser.add_argument('-l', '--listing', choices=('top','hot','new','random'), default='top', help='listing to get from Reddit')
-	parser.add_argument('-p', '--params', nargs='*', help='query parameters for the Reddit API (e.g. limit=10)')
-	return parser
 
 if __name__=='__main__':
 	main()
